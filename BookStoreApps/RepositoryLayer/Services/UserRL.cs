@@ -80,7 +80,8 @@ namespace RepositoryLayer.Services
             try
             {
                 string DBPasswrod = "";
-                int UserId;
+                int UserId = 0;
+              
                 SqlCommand cmd = new SqlCommand("spLoginUser",connection);
                 cmd.CommandType = CommandType.StoredProcedure;
 
@@ -88,7 +89,7 @@ namespace RepositoryLayer.Services
                 connection.Open();
                 var res=cmd.ExecuteNonQuery();
                 SqlDataReader rd = cmd.ExecuteReader();
-                ResponseModel response = new ResponseModel();
+            
                 while (rd.Read())
                 {
                      DBPasswrod = Convert.ToString(rd["Password"]);
@@ -100,9 +101,8 @@ namespace RepositoryLayer.Services
                 {
                     if(Decript!=null)
                     {
-                        
-                       return GenerateToken(userLogin.Email);
-                        
+                        var token= this.GenerateJWTTokennnn(userLogin.Email, UserId);
+                        return token;
                     }
                     else
                     {
@@ -119,6 +119,34 @@ namespace RepositoryLayer.Services
                 throw ex;
             }
         }
+
+
+
+        //-----------------
+        private string GenerateJWTTokennnn(string Email, int UserId)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var tokenKey = Encoding.ASCII.GetBytes("THIS_IS_MY_KEY_TO_GENERATE_TOKEN");
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new Claim[]
+                {
+                    new Claim(ClaimTypes.Role, "User"),
+                    new Claim("Email", Email),
+                    new Claim("UserId",UserId.ToString())
+                }),
+                Expires = DateTime.UtcNow.AddHours(2),// valid for 2 hr
+
+                SigningCredentials =
+                new SigningCredentials(
+                    new SymmetricSecurityKey(tokenKey),
+                    SecurityAlgorithms.HmacSha256Signature)
+            };
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
+        }
+
+        //-----------
 
         public static string DecryptedPassword(string encryptedPassword)
         {
